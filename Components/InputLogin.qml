@@ -124,7 +124,7 @@ Item {
 
             Item {
                 id: passwordField
-                implicitHeight: parent.height
+                implicitHeight: Appearance.formRowHeight
                 implicitWidth: 219
                 Layout.rightMargin: -Layout.leftMargin
 
