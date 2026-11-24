@@ -32,7 +32,7 @@ Item {
     Layout.alignment: Qt.AlignBottom
     implicitWidth: inputRow.implicitWidth
 
-    function focusActiveUserField(): void {
+    function focusActiveUserField() {
         if (selectUser.isOtherUser)
             usernameField.forceActiveFocus();
         else
