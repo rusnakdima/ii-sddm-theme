@@ -21,9 +21,23 @@ Item {
     property bool usePasswordChars: Settings.lock_materialShapeChars
     property var customShapeSequence: [MaterialShape.Shape.Clover4Leaf, MaterialShape.Shape.Arrow, MaterialShape.Shape.Pill, MaterialShape.Shape.SoftBurst, MaterialShape.Shape.Diamond, MaterialShape.Shape.ClamShell, MaterialShape.Shape.Pentagon]
 
-    Layout.preferredHeight: Appearance.formRowHeight
+    // When "Other user" is picked the free-form field feeds sddm.login;
+    // otherwise the dropdown selection does. Both are trimmed, and lowered
+    // unless the config explicitly allows uppercase usernames.
+    readonly property string typedUsername: usernameField.text.trim()
+    readonly property string rawUsername: selectUser.isOtherUser ? typedUsername : selectUser.currentText.trim()
+    readonly property string effectiveUsername: config.AllowUppercaseLettersInUsernames == "false" ? rawUsername.toLowerCase() : rawUsername
+
+    Layout.preferredHeight: selectUser.isOtherUser ? (Appearance.formRowHeight * 2 + 4) : Appearance.formRowHeight
     Layout.alignment: Qt.AlignBottom
     implicitWidth: inputRow.implicitWidth
+
+    function focusActiveUserField(): void {
+        if (selectUser.isOtherUser)
+            usernameField.forceActiveFocus();
+        else
+            password.forceActiveFocus();
+    }
 
     ListModel {
         id: passwordCharsModel
@@ -46,13 +60,66 @@ Item {
         radius: Appearance.rounding.full
     }
 
-    RowLayout {
-        id: inputRow
+    ColumnLayout {
+        id: mainColumn
         anchors.fill: parent
-        spacing: 6
+        spacing: 4
 
+        // Extra username field: only present when the dropdown's "Other user"
+        // row is selected. It sits directly above the password field.
         Item {
-            id: passwordField
+            id: usernameFieldWrap
+            visible: selectUser.isOtherUser
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? (parent.height - 4) / 2 : 0
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 8
+                color: Colors.surface_container_low
+                radius: Appearance.rounding.full
+            }
+
+            TextField {
+                id: usernameField
+                anchors.fill: parent
+                anchors.leftMargin: 11
+                anchors.rightMargin: 11
+                verticalAlignment: TextInput.AlignVCenter
+                font.family: Appearance.font_family_main
+                font.pixelSize: Appearance.font.pixelSize.normal
+                color: Colors.colOnLayer1
+                placeholderText: qsTr("Username")
+                placeholderTextColor: Qt.rgba(Colors.on_surface.r, Colors.on_surface.g, Colors.on_surface.b, 0.6)
+                background: Item {}
+                selectByMouse: true
+                enabled: !loginContainer.isLoggingIn
+
+                Component.onCompleted: {
+                    if (selectUser.isOtherUser)
+                        forceActiveFocus();
+                }
+
+                onTextEdited: {
+                    if (loginContainer.loginFailed && text.length > 0)
+                        loginContainer.loginFailed = false;
+                }
+
+                Keys.onReturnPressed: function(event) {
+                    password.forceActiveFocus();
+                    event.accepted = true;
+                }
+            }
+        }
+
+        RowLayout {
+            id: inputRow
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 6
+
+            Item {
+                id: passwordField
             implicitHeight: parent.height
             implicitWidth: 219
             Layout.rightMargin: -Layout.leftMargin
@@ -120,10 +187,9 @@ Item {
                     }
                     
                     onAccepted: {
-                        if (!loginContainer.isLoggingIn && (config.AllowEmptyPassword == "true" || password.text !== "")) {
+                        if (!loginContainer.isLoggingIn && (config.AllowEmptyPassword == "true" || (effectiveUsername !== "" && password.text !== ""))) {
                             loginContainer.isLoggingIn = true;
-                            const user = config.AllowUppercaseLettersInUsernames == "false" ? selectUser.currentText.toLowerCase() : selectUser.currentText;
-                            sddm.login(user, password.text, inputContainer.selectedSession);
+                            sddm.login(effectiveUsername, password.text, inputContainer.selectedSession);
                         }
                     }
 
@@ -270,7 +336,7 @@ Item {
                 text: ""
                 hoverEnabled: true
                 focusPolicy: Qt.TabFocus
-                enabled: !loginContainer.isLoggingIn && (config.AllowEmptyPassword == "true" || (selectUser.currentText !== "" && password.text !== ""))
+                enabled: !loginContainer.isLoggingIn && (config.AllowEmptyPassword == "true" || (effectiveUsername !== "" && password.text !== ""))
                 onPressed: {
                     if (!loginContainer.isLoggingIn)
                         loginRipple.state = "active";
@@ -280,8 +346,7 @@ Item {
                 onClicked: {
                     if (!loginContainer.isLoggingIn) {
                         loginContainer.isLoggingIn = true;
-                        const user = config.AllowUppercaseLettersInUsernames == "false" ? selectUser.currentText.toLowerCase() : selectUser.currentText;
-                        sddm.login(user, password.text, inputContainer.selectedSession);
+                        sddm.login(effectiveUsername, password.text, inputContainer.selectedSession);
                     }
                 }
 
@@ -478,12 +543,15 @@ Item {
 
         }
 
+        }
+
     }
 
     Connections {
         function onLoginFailed() {
             loginContainer.loginFailed = true;
             loginContainer.isLoggingIn = false;
+            usernameField.text = "";
             password.text = "";
             wrongPasswordShakeAnim.restart();
             password.forceActiveFocus();

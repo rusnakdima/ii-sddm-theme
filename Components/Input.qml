@@ -56,6 +56,8 @@ RowLayout {
 
             UserButton {
                 id: selectUser
+                onSelectionChanged: if (loginContainer) loginContainer.focusActiveUserField()
+                onAccepted: if (loginContainer) loginContainer.focusActiveUserField()
             }
 
             LayoutButton {

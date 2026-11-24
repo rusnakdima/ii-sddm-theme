@@ -89,7 +89,7 @@ check_requirements() {
         log_error "Do not run this script as root. It will use sudo when needed."
         exit 1
     fi
-    if ! sudo -v; then
+    if ! sudo -n true; then
         log_error "sudo authentication failed."
         exit 1
     fi

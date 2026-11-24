@@ -4,6 +4,7 @@
 // Modified by 3d3f for the "ii-sddm-theme" project (2025)
 // Licensed under the GNU General Public License v3.0
 // See: https://www.gnu.org/licenses/gpl-3.0.txt
+// Fork change: always-visible dropdown with an extra "Other user" entry.
 
 import "Commons"
 import QtQuick
@@ -13,17 +14,49 @@ import QtQuick.Layouts
 FocusScope {
     id: userIsland
 
-    property alias currentIndex: userList.currentIndex
-    property bool isOpen: false
-    readonly property string currentText: selectedTextMetrics.text
-    readonly property int baseHeight: 42
-    readonly property int popupHeight: Math.min(400, userList.contentHeight + 12)
-    readonly property int baseWidth: Math.ceil(selectedTextMetrics.advanceWidth + 60)
-    readonly property int expandedWidth: Math.ceil(Math.max(100, longestTextMetrics.advanceWidth + 90))
+    // The appended "Other user" row sits one past the real SDDM users.
+    readonly property int otherUserIndex: userModel.count
+    readonly property string otherUserLabel: qsTr("Other user")
 
-    focusPolicy: Qt.ClickFocus 
+    property int currentIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : otherUserIndex
+    property bool isOpen: false
+
+    readonly property bool isOtherUser: currentIndex === otherUserIndex
+    readonly property string currentText: isOtherUser
+        ? otherUserLabel
+        : (currentIndex >= 0 && currentIndex < userModel.count ? nameAt(currentIndex) : "")
+
+    readonly property int baseHeight: 42
+    readonly property int popupHeight: Math.min(400, (userModel.count + 1) * 48 + 12)
+    readonly property int baseWidth: Math.ceil(Math.max(150, selectedTextMetrics.advanceWidth + 70))
+    readonly property int expandedWidth: Math.ceil(Math.max(150, longestTextMetrics.advanceWidth + 100))
+
+    signal selectionChanged()
+    signal accepted()
+
+    function nameAt(i) {
+        return userModel.data(userModel.index(i, 0), 257) || "";
+    }
+
+    function iconAt(i) {
+        return userModel.data(userModel.index(i, 0), 260) || "";
+    }
+
+    function avatarAt(i) {
+        var name = nameAt(i);
+        return name === "dmitriy"
+            ? "file:///home/dmitriy/Pictures/ava/ava-violet-2x.png"
+            : iconAt(i);
+    }
+
+    function labelAt(i) {
+        return i === userIsland.otherUserIndex ? userIsland.otherUserLabel : userIsland.nameAt(i);
+    }
+
+    focusPolicy: Qt.ClickFocus
     implicitWidth: isOpen ? expandedWidth : baseWidth
-    implicitHeight: baseHeight 
+    implicitHeight: baseHeight
+
     onActiveFocusChanged: {
         if (!activeFocus)
             isOpen = false;
@@ -47,7 +80,7 @@ FocusScope {
         id: selectedTextMetrics
         font.family: Appearance.font_family_main
         font.pixelSize: Appearance.font.pixelSize.normal
-        text: userModel.data(userModel.index(userList.currentIndex, 0), 257) || ""
+        text: userIsland.currentText
     }
 
     TextMetrics {
@@ -55,9 +88,9 @@ FocusScope {
         font.family: Appearance.font_family_main
         font.pixelSize: Appearance.font.pixelSize.normal
         text: {
-            var longest = "";
+            var longest = userIsland.otherUserLabel;
             for (var i = 0; i < userModel.count; i++) {
-                var name = userModel.data(userModel.index(i, 0), 257);
+                var name = userIsland.nameAt(i);
                 if (name && name.length > longest.length)
                     longest = name;
             }
@@ -67,7 +100,7 @@ FocusScope {
 
     Rectangle {
         id: animatedContainer
-        anchors.bottom: parent.bottom 
+        anchors.bottom: parent.bottom
         width: parent.width
         height: isOpen ? userIsland.popupHeight : userIsland.baseHeight
         antialiasing: true
@@ -85,7 +118,7 @@ FocusScope {
             id: userButton
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: parent.bottom 
+            anchors.bottom: parent.bottom
             height: userIsland.baseHeight
             hoverEnabled: true
             focusPolicy: Qt.NoFocus
@@ -112,14 +145,14 @@ FocusScope {
 
                 Avatar {
                     size: 24
-                    userName: selectedTextMetrics.text
-                    source: userModel.data(userModel.index(userList.currentIndex, 0), 260) || ""
+                    userName: userIsland.currentText
+                    source: userIsland.isOtherUser ? "" : userIsland.avatarAt(userIsland.currentIndex)
                     iconColor: Colors.on_surface_variant
                 }
 
                 Text {
                     Layout.fillWidth: true
-                    text: selectedTextMetrics.text
+                    text: userIsland.currentText
                     font: selectedTextMetrics.font
                     color: Colors.on_surface_variant
                     elide: Text.ElideRight
@@ -127,69 +160,79 @@ FocusScope {
             }
         }
 
-ListView {
-    id: userList
-    anchors.fill: parent
-    anchors.margins: 6 
-    model: userModel
-    clip: true
-    spacing: 6 
-    focusPolicy: Qt.NoFocus
-    focus: isOpen
-    opacity: isOpen ? 1 : 0
-    visible: opacity > 0
-    currentIndex: userModel.lastIndex
-
-    delegate: Item {
-        id: userEntry
-        width: userList.width
-        height: 42
-
-        Rectangle {
+        ListView {
+            id: userList
             anchors.fill: parent
-            radius: 12
-            color: userList.currentIndex === index 
-                   ? Colors.primary 
-                   : (ma.containsMouse ? Colors.colPrimaryContainerHover : Colors.primary_container)
-        }
-
-        RowLayout {
-            anchors.fill: parent
-            spacing: 0
-            
-            Avatar {
-                size: 26
-                userName: model.name
-                source: model.icon || ""
-                iconColor: userList.currentIndex === index ? Colors.on_primary : Colors.on_primary_container
-                Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
-                Layout.leftMargin: 10
-
+            anchors.margins: 6
+            model: userModel.count + 1
+            clip: true
+            spacing: 6
+            focusPolicy: Qt.NoFocus
+            focus: isOpen
+            opacity: isOpen ? 1 : 0
+            visible: opacity > 0
+            currentIndex: userIsland.currentIndex
+            onCurrentIndexChanged: {
+                if (currentIndex >= 0 && currentIndex <= userModel.count) {
+                    userIsland.currentIndex = currentIndex;
+                    userIsland.selectionChanged();
+                }
             }
 
-            Text {
-                text: model.name
-                font.family: Appearance.font_family_main
-                font.pixelSize: Appearance.font.pixelSize.normal
-                elide: Text.ElideRight
-                color: userList.currentIndex === index ? Colors.on_primary : Colors.on_primary_container
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
-                Layout.leftMargin: 10
-            }
-        }
+            delegate: Item {
+                id: userEntry
+                width: userList.width
+                height: 42
 
-        MouseArea {
-            id: ma
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: {
-                userList.currentIndex = index;
-                isOpen = false;
+                readonly property string rowName: userIsland.labelAt(index)
+                readonly property bool rowIsOther: index === userIsland.otherUserIndex
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 12
+                    color: userList.currentIndex === index
+                           ? Colors.primary
+                           : (ma.containsMouse ? Colors.colPrimaryContainerHover : Colors.primary_container)
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: 0
+
+                    Avatar {
+                        size: 26
+                        userName: rowName
+                        source: rowIsOther ? "" : userIsland.avatarAt(index)
+                        iconColor: userList.currentIndex === index ? Colors.on_primary : Colors.on_primary_container
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                        Layout.leftMargin: 10
+                    }
+
+                    Text {
+                        text: rowName
+                        font.family: Appearance.font_family_main
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                        elide: Text.ElideRight
+                        color: userList.currentIndex === index ? Colors.on_primary : Colors.on_primary_container
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                        Layout.leftMargin: 10
+                    }
+                }
+
+                MouseArea {
+                    id: ma
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        userList.currentIndex = index;
+                        userIsland.isOpen = false;
+                        userIsland.selectionChanged();
+                        userIsland.accepted();
+                    }
+                }
             }
         }
-    }
-}
 
         Behavior on height {
             NumberAnimation { duration: 250; easing.type: Easing.InOutQuad }

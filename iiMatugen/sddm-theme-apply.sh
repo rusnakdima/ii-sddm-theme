@@ -23,6 +23,17 @@ validate_path() {
     realpath "$path"
 }
 
+# --- Privilege helper ---
+# The theme directory is only writable by root. When the script is already
+# running as root (the wallpaper sync runs it that way) sudo is not needed.
+run_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
 # --- Local user name ---
 REAL_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(eval echo "~$REAL_USER")"
@@ -163,19 +174,24 @@ done
 
 # --- Copy to destination ---
 
-sudo mkdir -p -m 755 "$DEST/Components"
-sudo mkdir -p -m 755 "$DEST/Backgrounds"
-sudo mkdir -p -m 755 "$DEST/Themes"
+run_root mkdir -p -m 755 "$DEST/Components"
+run_root mkdir -p -m 755 "$DEST/Backgrounds"
+run_root mkdir -p -m 755 "$DEST/Themes"
 
-sudo cp --no-dereference --preserve=mode,timestamps "$COLORS_QML_SOURCE" "$DEST/Components/Colors.qml"
-sudo cp --no-dereference --preserve=mode,timestamps "$SETTINGS_QML_SOURCE" "$DEST/Components/Settings.qml"
-sudo cp --no-dereference --preserve=mode,timestamps "$WALLPAPER_PATH" "$DEST/Backgrounds/$BACKGROUND_FILENAME"
-sudo cp --no-dereference --preserve=mode,timestamps "$CONF_FILE" "$DEST/Themes/ii-sddm.conf"
+run_root cp --no-dereference --preserve=mode,timestamps "$COLORS_QML_SOURCE" "$DEST/Components/Colors.qml"
+run_root cp --no-dereference --preserve=mode,timestamps "$SETTINGS_QML_SOURCE" "$DEST/Components/Settings.qml"
+run_root cp --no-dereference --preserve=mode,timestamps "$WALLPAPER_PATH" "$DEST/Backgrounds/$BACKGROUND_FILENAME"
+run_root cp --no-dereference --preserve=mode,timestamps "$CONF_FILE" "$DEST/Themes/ii-sddm.conf"
 
 if [ "$IS_VIDEO" = true ]; then
-    sudo cp --no-dereference --preserve=mode,timestamps "$PLACEHOLDER_TEMP" "$DEST/Backgrounds/$PLACEHOLDER_FILENAME"
+    run_root cp --no-dereference --preserve=mode,timestamps "$PLACEHOLDER_TEMP" "$DEST/Backgrounds/$PLACEHOLDER_FILENAME"
     rm -f "$PLACEHOLDER_TEMP"
 fi
 
-sudo chmod 644 "$DEST/Components/Colors.qml" "$DEST/Components/Settings.qml" "$DEST/Backgrounds/$BACKGROUND_FILENAME" "$DEST/Themes/ii-sddm.conf"
-[ "$IS_VIDEO" = true ] && sudo chmod 644 "$DEST/Backgrounds/$PLACEHOLDER_FILENAME"
+run_root chmod 644 "$DEST/Components/Colors.qml" "$DEST/Components/Settings.qml" "$DEST/Backgrounds/$BACKGROUND_FILENAME" "$DEST/Themes/ii-sddm.conf"
+if [ "$IS_VIDEO" = true ]; then
+    run_root chmod 644 "$DEST/Backgrounds/$PLACEHOLDER_FILENAME"
+fi
+
+echo "sddm-theme-apply: greeter background set to $WALLPAPER_PATH"
+exit 0
