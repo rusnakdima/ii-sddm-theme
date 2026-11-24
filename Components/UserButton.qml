@@ -13,7 +13,6 @@ import QtQuick.Layouts
 
 FocusScope {
     id: userIsland
-
     // The appended "Other user" row sits one past the real SDDM users.
     readonly property int otherUserIndex: userModel.count
     readonly property string otherUserLabel: qsTr("Other user")
@@ -69,7 +68,14 @@ FocusScope {
                 event.accepted = true;
             }
         } else {
-            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return) {
+            if (event.key === Qt.Key_Return) {
+                if (userList.currentIndex >= 0) {
+                    userIsland.currentIndex = userList.currentIndex;
+                    userIsland.selectionChanged();
+                }
+                isOpen = false;
+                event.accepted = true;
+            } else if (event.key === Qt.Key_Escape) {
                 isOpen = false;
                 event.accepted = true;
             }
@@ -172,12 +178,6 @@ FocusScope {
             opacity: isOpen ? 1 : 0
             visible: opacity > 0
             currentIndex: userIsland.currentIndex
-            onCurrentIndexChanged: {
-                if (currentIndex >= 0 && currentIndex <= userModel.count) {
-                    userIsland.currentIndex = currentIndex;
-                    userIsland.selectionChanged();
-                }
-            }
 
             delegate: Item {
                 id: userEntry
@@ -225,7 +225,7 @@ FocusScope {
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        userList.currentIndex = index;
+                        userIsland.currentIndex = index;
                         userIsland.isOpen = false;
                         userIsland.selectionChanged();
                         userIsland.accepted();

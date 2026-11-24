@@ -43,23 +43,6 @@ Item {
         id: passwordCharsModel
     }
 
-    Loader {
-        active: config.Shadow == "true"
-        anchors.fill: sharedBackground
-        z: -1
-        sourceComponent: StyledRectangularShadow {
-            target: sharedBackground
-            anchors.fill: undefined
-        }
-    }
-
-    Rectangle {
-        id: sharedBackground
-        anchors.fill: parent
-        color: Colors.surface_container
-        radius: Appearance.rounding.full
-    }
-
     ColumnLayout {
         id: mainColumn
         anchors.fill: parent
@@ -70,8 +53,27 @@ Item {
         Item {
             id: usernameFieldWrap
             visible: selectUser.isOtherUser
-            Layout.fillWidth: true
+            Layout.preferredWidth: passwordField.implicitWidth
+            Layout.fillWidth: false
+            Layout.alignment: Qt.AlignLeft
             Layout.preferredHeight: visible ? (parent.height - 4) / 2 : 0
+
+            Loader {
+                active: config.Shadow == "true"
+                anchors.fill: usernameBackground
+                z: -1
+                sourceComponent: StyledRectangularShadow {
+                    target: usernameBackground
+                    anchors.fill: undefined
+                }
+            }
+
+            Rectangle {
+                id: usernameBackground
+                anchors.fill: parent
+                color: Colors.surface_container
+                radius: Appearance.rounding.full
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -83,8 +85,7 @@ Item {
             TextField {
                 id: usernameField
                 anchors.fill: parent
-                anchors.leftMargin: 11
-                anchors.rightMargin: 11
+                anchors.margins: 11
                 verticalAlignment: TextInput.AlignVCenter
                 font.family: Appearance.font_family_main
                 font.pixelSize: Appearance.font.pixelSize.normal
@@ -120,12 +121,29 @@ Item {
 
             Item {
                 id: passwordField
-            implicitHeight: parent.height
-            implicitWidth: 219
-            Layout.rightMargin: -Layout.leftMargin
+                implicitHeight: parent.height
+                implicitWidth: 219
+                Layout.rightMargin: -Layout.leftMargin
 
-            Rectangle {
-                id: fieldBackground
+                Loader {
+                    active: config.Shadow == "true"
+                    anchors.fill: passwordBackground
+                    z: -1
+                    sourceComponent: StyledRectangularShadow {
+                        target: passwordBackground
+                        anchors.fill: undefined
+                    }
+                }
+
+                Rectangle {
+                    id: passwordBackground
+                    anchors.fill: parent
+                    color: Colors.surface_container
+                    radius: Appearance.rounding.full
+                }
+
+                Rectangle {
+                    id: fieldBackground
                 anchors.fill: parent
                 anchors.margins: 8
                 color: Colors.surface_container_low
@@ -145,7 +163,7 @@ Item {
                     id: customPlaceholder
                     visible: usePasswordChars && password.text.length === 0
                     anchors.fill: parent
-                    anchors.leftMargin: 10
+                    anchors.margins: 11
                     verticalAlignment: Text.AlignVCenter
                     text: loginContainer.loginFailed ? "Incorrect password" : "Enter password"
                     color: loginContainer.loginFailed ? Colors.error : Qt.rgba(Colors.on_surface.r, Colors.on_surface.g, Colors.on_surface.b, 0.6)
@@ -156,8 +174,8 @@ Item {
                 TextField {
                     id: password
                     anchors.fill: parent
-                    anchors.leftMargin: 3
-                    anchors.rightMargin: 3
+                    anchors.margins: 11
+                    verticalAlignment: TextInput.AlignVCenter
                     color: usePasswordChars ? "transparent" : Colors.colOnLayer1
                     focus: true
                     focusPolicy: Qt.StrongFocus
@@ -193,11 +211,7 @@ Item {
                         }
                     }
 
-                    background: Rectangle {
-                        id: fieldRect
-                        color: Colors.colLayer1
-                        radius: Appearance.rounding.full
-                    }
+                    background: Item {}
                 }
 
                 PasswordChars {
