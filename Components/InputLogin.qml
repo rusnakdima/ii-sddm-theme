@@ -28,7 +28,10 @@ Item {
     readonly property string rawUsername: selectUser.isOtherUser ? typedUsername : selectUser.currentText.trim()
     readonly property string effectiveUsername: config.AllowUppercaseLettersInUsernames == "false" ? rawUsername.toLowerCase() : rawUsername
 
+    Layout.minimumHeight: selectUser.isOtherUser ? (Appearance.formRowHeight * 2 + 4) : Appearance.formRowHeight
     Layout.preferredHeight: selectUser.isOtherUser ? (Appearance.formRowHeight * 2 + 4) : Appearance.formRowHeight
+    Layout.maximumHeight: selectUser.isOtherUser ? (Appearance.formRowHeight * 2 + 4) : Appearance.formRowHeight
+    Layout.fillHeight: false
     Layout.alignment: Qt.AlignBottom
     implicitWidth: inputRow.implicitWidth
 
@@ -46,7 +49,7 @@ Item {
     ColumnLayout {
         id: mainColumn
         anchors.fill: parent
-        spacing: 4
+        spacing: selectUser.isOtherUser ? 4 : 0
 
         // Extra username field: only present when the dropdown's "Other user"
         // row is selected. It sits directly above the password field.
@@ -59,7 +62,7 @@ Item {
             Layout.preferredHeight: visible ? (parent.height - 4) / 2 : 0
 
             Loader {
-                active: config.Shadow == "true"
+                active: config.Shadow == "true" && selectUser.isOtherUser
                 anchors.fill: usernameBackground
                 z: -1
                 sourceComponent: StyledRectangularShadow {
@@ -180,6 +183,7 @@ Item {
                     focus: true
                     focusPolicy: Qt.StrongFocus
                     Component.onCompleted: password.forceActiveFocus()
+
                     echoMode: TextInput.Password
                     placeholderText: loginContainer.loginFailed ? "Incorrect password" : "Enter password"
                     placeholderTextColor: loginContainer.loginFailed ? Colors.error : Qt.rgba(Colors.on_surface.r, Colors.on_surface.g, Colors.on_surface.b, 0.6)
